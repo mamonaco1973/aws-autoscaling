@@ -1,8 +1,5 @@
-
 #!/bin/bash
+set -euo pipefail
 
-export AWS_DEFAULT_REGION="us-east-2"
-
-./build/destroy_phase_1.sh
-./build/destroy_phase_2.sh
-
+cd 01-autoscaling
+terraform destroy -auto-approve
