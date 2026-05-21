@@ -3,8 +3,9 @@
 # File: validate.sh
 # ===============================================================================
 
-export AWS_DEFAULT_REGION="us-east-2"
 set -euo pipefail
+
+REGION="us-east-2"
 
 # ------------------------------------------------------------------------------
 # Step 1: Resolve ALB DNS from Terraform output
@@ -25,6 +26,7 @@ echo "NOTE: ALB endpoint: http://${ALB_DNS}"
 # ------------------------------------------------------------------------------
 
 TG_ARN=$(aws elbv2 describe-target-groups \
+  --region "${REGION}" \
   --names asg-tg \
   --query 'TargetGroups[0].TargetGroupArn' \
   --output text)
@@ -36,6 +38,7 @@ ELAPSED=0
 
 while true; do
   HEALTHY=$(aws elbv2 describe-target-health \
+    --region "${REGION}" \
     --target-group-arn "${TG_ARN}" \
     --query 'TargetHealthDescriptions[?TargetHealth.State==`healthy`] | length(@)' \
     --output text)
