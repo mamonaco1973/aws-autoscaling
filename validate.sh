@@ -1,31 +1,30 @@
 #!/bin/bash
+# ===============================================================================
+# File: validate.sh
+# ===============================================================================
+
+export AWS_DEFAULT_REGION="us-east-2"
 set -euo pipefail
 
-# ================================================================================
-# Validation
-# Waits for healthy ALB targets then samples responses to confirm load balancing
-# ================================================================================
-
 # ------------------------------------------------------------------------------
-# Resolve ALB DNS from Terraform output
+# Step 1: Resolve ALB DNS from Terraform output
 # ------------------------------------------------------------------------------
 
-cd 01-autoscaling
+ALB_DNS=$(terraform -chdir=01-autoscaling output -raw alb_dns_name 2>/dev/null || true)
 
-ALB_DNS=$(terraform output -raw alb_dns_name)
+if [ -z "${ALB_DNS}" ]; then
+  echo "ERROR: Could not read Terraform outputs. Run ./apply.sh first."
+  exit 1
+fi
 
-# Pin the region so AWS CLI calls match where Terraform deployed the resources
-AWS_REGION="us-east-2"
-
-echo "NOTE: ALB endpoint: http://$ALB_DNS"
+echo "NOTE: ALB endpoint: http://${ALB_DNS}"
 
 # ------------------------------------------------------------------------------
-# Wait for Healthy Targets
-# Polls every 10s — instances need time for httpd to start and pass health checks
+# Step 2: Wait for healthy targets in asg-tg
+# Polls every 10s — instances need time for httpd to start and pass checks
 # ------------------------------------------------------------------------------
 
 TG_ARN=$(aws elbv2 describe-target-groups \
-  --region "$AWS_REGION" \
   --names asg-tg \
   --query 'TargetGroups[0].TargetGroupArn' \
   --output text)
@@ -37,17 +36,16 @@ ELAPSED=0
 
 while true; do
   HEALTHY=$(aws elbv2 describe-target-health \
-    --region "$AWS_REGION" \
-    --target-group-arn "$TG_ARN" \
+    --target-group-arn "${TG_ARN}" \
     --query 'TargetHealthDescriptions[?TargetHealth.State==`healthy`] | length(@)' \
     --output text)
 
-  if [ "$HEALTHY" -ge 1 ]; then
-    echo "NOTE: $HEALTHY healthy target(s) registered."
+  if [ "${HEALTHY}" -ge 1 ]; then
+    echo "NOTE: ${HEALTHY} healthy target(s) registered."
     break
   fi
 
-  if [ "$ELAPSED" -ge "$TIMEOUT" ]; then
+  if [ "${ELAPSED}" -ge "${TIMEOUT}" ]; then
     echo "ERROR: Timed out waiting for healthy targets after ${TIMEOUT}s."
     exit 1
   fi
@@ -58,18 +56,21 @@ while true; do
 done
 
 # ------------------------------------------------------------------------------
-# Sample Responses
-# Hit the ALB 6 times — repeated IPs confirm round-robin across instances
+# Step 3: Sample ALB responses
+# Hit the endpoint 6 times — different IPs confirm load balancing is working
 # ------------------------------------------------------------------------------
 
-echo ""
-echo "NOTE: Sampling ALB — each request may land on a different instance."
+echo "NOTE: Sampling ALB responses..."
 echo ""
 
 for i in $(seq 1 6); do
-  RESPONSE=$(curl -sf "http://$ALB_DNS")
-  echo "  [$i] $RESPONSE"
+  RESPONSE=$(curl -sf "http://${ALB_DNS}")
+  echo "  [${i}] ${RESPONSE}"
 done
 
 echo ""
-echo "NOTE: Done. Open http://$ALB_DNS in a browser to explore."
+echo "================================================================================="
+echo "  Auto Scaling Group — Deployment validated!"
+echo "================================================================================="
+echo "  ALB : http://${ALB_DNS}"
+echo "================================================================================="

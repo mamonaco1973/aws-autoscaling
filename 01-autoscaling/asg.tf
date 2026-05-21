@@ -9,11 +9,11 @@
 resource "aws_autoscaling_group" "main" {
   name = "asg-main"
 
-  # Floor of 2 ensures there is always at least one instance per AZ;
-  # ceiling of 4 caps cost during a runaway load event
-  min_size         = 2
-  max_size         = 4
-  desired_capacity = 2
+  # Floor of 1 keeps the group alive at minimum cost during quiet periods;
+  # ceiling of 6 caps cost during a runaway load event
+  min_size         = 1
+  max_size         = 6
+  desired_capacity = 4
 
   # Private subnets only — instances are never placed in public subnets.
   # The ASG distributes instances evenly across both AZs automatically.

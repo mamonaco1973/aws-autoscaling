@@ -34,7 +34,7 @@ data "aws_ami" "al2023" {
   # variants that ship without the package manager configured for httpd
   filter {
     name   = "name"
-    values = ["al2023-ami-2023*x86_64"]
+    values = ["al2023-ami-2023*arm64"]
   }
 
   # HVM (hardware virtual machine) is required for current-gen instance types;

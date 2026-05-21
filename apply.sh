@@ -1,9 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-cd 01-autoscaling
-terraform init
-terraform apply -auto-approve
+terraform -chdir=01-autoscaling init
+terraform -chdir=01-autoscaling apply -auto-approve
 
-cd ..
 ./validate.sh

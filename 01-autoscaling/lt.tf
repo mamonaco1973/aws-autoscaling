@@ -33,7 +33,7 @@ resource "aws_launch_template" "main" {
   # the name would collide
   name_prefix   = "asg-lt-"
   image_id      = data.aws_ami.al2023.id
-  instance_type = "t2.micro"
+  instance_type = "t4g.micro"
 
   network_interfaces {
     # Instances live in private subnets and must not receive public IPs —
