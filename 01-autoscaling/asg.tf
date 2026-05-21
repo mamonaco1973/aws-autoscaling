@@ -1,25 +1,44 @@
 # ================================================================================
 # Auto Scaling Group
-# Maintains 2-4 instances across both AZs with ELB-based health checks
+# The ASG maintains the desired number of instances across both private subnets,
+# automatically replacing unhealthy instances and adjusting capacity in response
+# to the CloudWatch CPU alarms defined below. Instances are spread across two
+# AZs so the application stays available if one AZ has an outage.
 # ================================================================================
 
 resource "aws_autoscaling_group" "main" {
-  name             = "asg-main"
+  name = "asg-main"
+
+  # Floor of 2 ensures there is always at least one instance per AZ;
+  # ceiling of 4 caps cost during a runaway load event
   min_size         = 2
   max_size         = 4
   desired_capacity = 2
 
+  # Private subnets only — instances are never placed in public subnets.
+  # The ASG distributes instances evenly across both AZs automatically.
   vpc_zone_identifier = [aws_subnet.private_a.id, aws_subnet.private_b.id]
-  target_group_arns   = [aws_lb_target_group.main.arn]
 
-  # ELB type defers to ALB health checks rather than EC2 instance status only
+  # Registering with the target group allows the ALB to route traffic to new
+  # instances as soon as they pass health checks, and stop routing to them
+  # when they are terminated during a scale-in event
+  target_group_arns = [aws_lb_target_group.main.arn]
+
+  # ELB health type defers to the ALB's own health checks rather than the
+  # basic EC2 instance-running check. This means an instance that is up but
+  # returning HTTP errors will be replaced, not just an instance that crashed.
   health_check_type = "ELB"
 
-  # 60s grace period lets httpd start before the instance is health-checked
+  # Give instances 60 seconds to finish the user_data script and start httpd
+  # before the ASG begins health checking. Without this, instances are often
+  # terminated and relaunched in a loop during initial deployment.
   health_check_grace_period = 60
 
   launch_template {
-    id      = aws_launch_template.main.id
+    id = aws_launch_template.main.id
+
+    # $Latest ensures scale-out events always use the most recent template
+    # version — avoids stale AMIs or user_data after a template update
     version = "$Latest"
   }
 
@@ -32,7 +51,10 @@ resource "aws_autoscaling_group" "main" {
 
 # ================================================================================
 # Scaling Policies
-# Step adjustments of +1/-1 with 120s cooldown to prevent thrashing
+# Each policy adjusts capacity by exactly one instance. Gradual step adjustments
+# are safer than percentage-based scaling for small groups — removing 50% of a
+# 2-instance group would leave zero capacity. The 120s cooldown prevents the ASG
+# from launching a second wave before the first wave has absorbed the load.
 # ================================================================================
 
 resource "aws_autoscaling_policy" "scale_up" {
@@ -53,9 +75,13 @@ resource "aws_autoscaling_policy" "scale_down" {
 
 # ================================================================================
 # CloudWatch Alarms
-# Asymmetric periods — scale up fast (2), scale down cautiously (10)
+# CPU utilization drives all scaling decisions. The asymmetric evaluation periods
+# make the group react quickly to rising load (2 periods = 2 min) but wait for
+# sustained low load before scaling in (10 periods = 10 min). This prevents
+# premature termination of instances during brief CPU dips between bursts.
 # ================================================================================
 
+# Triggers scale_up after CPU exceeds 60% for 2 consecutive 1-minute periods
 resource "aws_cloudwatch_metric_alarm" "cpu_high" {
   alarm_name          = "asg-cpu-high"
   comparison_operator = "GreaterThanThreshold"
@@ -73,6 +99,8 @@ resource "aws_cloudwatch_metric_alarm" "cpu_high" {
   alarm_actions = [aws_autoscaling_policy.scale_up.arn]
 }
 
+# Triggers scale_down after CPU stays below 60% for 10 consecutive 1-minute
+# periods — the longer window avoids removing instances too eagerly
 resource "aws_cloudwatch_metric_alarm" "cpu_low" {
   alarm_name          = "asg-cpu-low"
   comparison_operator = "LessThanThreshold"

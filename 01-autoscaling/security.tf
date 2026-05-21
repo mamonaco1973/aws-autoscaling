@@ -1,9 +1,13 @@
 # ================================================================================
 # Security Groups
-# ALB accepts public traffic; instances only accept traffic from the ALB
+# Two-tier model: the ALB faces the internet and accepts HTTP from anywhere;
+# instances only accept traffic sourced from the ALB security group. This means
+# an instance is unreachable directly from the internet even though it sits in
+# a VPC with an IGW — the security group is the enforcement point.
 # ================================================================================
 
-# Public entry point — ALB must be reachable from the internet on port 80
+# The ALB is the sole public entry point. Port 80 is open to the world so that
+# any browser can reach the application without needing to know instance IPs.
 resource "aws_security_group" "alb" {
   name        = "asg-alb-sg"
   description = "Allow HTTP inbound to ALB"
@@ -16,6 +20,8 @@ resource "aws_security_group" "alb" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # Unrestricted egress lets the ALB forward requests to instances and receive
+  # health-check responses — the ALB itself initiates these outbound connections
   egress {
     from_port   = 0
     to_port     = 0
@@ -26,7 +32,10 @@ resource "aws_security_group" "alb" {
   tags = { Name = "asg-alb-sg" }
 }
 
-# Instances only accept HTTP from the ALB — not directly from the internet
+# Using a security group reference instead of a CIDR means only traffic that
+# literally passed through the ALB security group can reach instances.
+# Adding your laptop's IP to the ALB CIDR would not grant direct instance
+# access — the instance SG would still block it.
 resource "aws_security_group" "instance" {
   name        = "asg-instance-sg"
   description = "Allow HTTP from ALB only"
@@ -39,6 +48,8 @@ resource "aws_security_group" "instance" {
     security_groups = [aws_security_group.alb.id]
   }
 
+  # Unrestricted egress allows instances to reach yum repos and AWS APIs
+  # through the NAT gateway — no specific destination needs to be whitelisted
   egress {
     from_port   = 0
     to_port     = 0
