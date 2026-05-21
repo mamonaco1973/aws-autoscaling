@@ -69,10 +69,10 @@ When the deployment completes, the following resources are created:
 
 | Alarm    | Condition  | Periods    | Action      |
 |----------|------------|------------|-------------|
-| cpu-high | CPU > 60%  | 2 × 1 min  | +1 instance |
-| cpu-low  | CPU < 60%  | 10 × 1 min | -1 instance |
+| cpu-high | CPU > 60%  | 2 × 1 min   | +1 instance |
+| cpu-low  | CPU < 60%  | 60 × 1 min  | -1 instance |
 
-The asymmetric period counts (fast scale-up, slow scale-down) prevent thrashing under brief CPU spikes.
+The long scale-in window (1 hour) prevents instances from being removed during demos or brief quiet periods.
 
 ---
 

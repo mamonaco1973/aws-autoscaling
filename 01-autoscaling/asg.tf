@@ -77,8 +77,8 @@ resource "aws_autoscaling_policy" "scale_down" {
 # CloudWatch Alarms
 # CPU utilization drives all scaling decisions. The asymmetric evaluation periods
 # make the group react quickly to rising load (2 periods = 2 min) but wait for
-# sustained low load before scaling in (10 periods = 10 min). This prevents
-# premature termination of instances during brief CPU dips between bursts.
+# sustained low load before scaling in (60 periods = 1 hr). This prevents
+# premature termination of instances during demos or brief quiet periods.
 # ================================================================================
 
 # Triggers scale_up after CPU exceeds 60% for 2 consecutive 1-minute periods
@@ -99,12 +99,12 @@ resource "aws_cloudwatch_metric_alarm" "cpu_high" {
   alarm_actions = [aws_autoscaling_policy.scale_up.arn]
 }
 
-# Triggers scale_down after CPU stays below 60% for 10 consecutive 1-minute
-# periods — the longer window avoids removing instances too eagerly
+# Triggers scale_down after CPU stays below 60% for 60 consecutive 1-minute
+# periods — long window prevents scale-in during demos or brief quiet periods
 resource "aws_cloudwatch_metric_alarm" "cpu_low" {
   alarm_name          = "asg-cpu-low"
   comparison_operator = "LessThanThreshold"
-  evaluation_periods  = 10
+  evaluation_periods  = 60
   metric_name         = "CPUUtilization"
   namespace           = "AWS/EC2"
   period              = 60
