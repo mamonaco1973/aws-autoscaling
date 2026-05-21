@@ -9,7 +9,7 @@ resource "aws_autoscaling_group" "main" {
   max_size         = 4
   desired_capacity = 2
 
-  vpc_zone_identifier = [aws_subnet.subnet_a.id, aws_subnet.subnet_b.id]
+  vpc_zone_identifier = [aws_subnet.private_a.id, aws_subnet.private_b.id]
   target_group_arns   = [aws_lb_target_group.main.arn]
 
   # ELB type defers to ALB health checks rather than EC2 instance status only

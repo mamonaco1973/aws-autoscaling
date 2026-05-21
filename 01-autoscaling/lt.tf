@@ -25,7 +25,7 @@ resource "aws_launch_template" "main" {
   instance_type = "t2.micro"
 
   network_interfaces {
-    associate_public_ip_address = true
+    associate_public_ip_address = false
     security_groups             = [aws_security_group.instance.id]
   }
 
