@@ -14,6 +14,9 @@ cd 01-autoscaling
 
 ALB_DNS=$(terraform output -raw alb_dns_name)
 
+# Pin the region so AWS CLI calls match where Terraform deployed the resources
+AWS_REGION="us-east-2"
+
 echo "NOTE: ALB endpoint: http://$ALB_DNS"
 
 # ------------------------------------------------------------------------------
@@ -22,6 +25,7 @@ echo "NOTE: ALB endpoint: http://$ALB_DNS"
 # ------------------------------------------------------------------------------
 
 TG_ARN=$(aws elbv2 describe-target-groups \
+  --region "$AWS_REGION" \
   --names asg-tg \
   --query 'TargetGroups[0].TargetGroupArn' \
   --output text)
@@ -33,6 +37,7 @@ ELAPSED=0
 
 while true; do
   HEALTHY=$(aws elbv2 describe-target-health \
+    --region "$AWS_REGION" \
     --target-group-arn "$TG_ARN" \
     --query 'TargetHealthDescriptions[?TargetHealth.State==`healthy`] | length(@)' \
     --output text)
