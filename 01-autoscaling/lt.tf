@@ -6,27 +6,6 @@
 # without needing to replace existing instances.
 # ================================================================================
 
-locals {
-  # The user_data script runs once on first boot via cloud-init. It installs
-  # Apache, fetches the instance's private IP from the metadata service, writes
-  # a simple HTML welcome page, and starts httpd.
-  #
-  # IMDSv2 requires a token-based request flow to prevent SSRF attacks against
-  # the metadata service. AL2023 disables IMDSv1 by default, so the token PUT
-  # must succeed before any metadata value can be read.
-  user_data = <<-EOF
-    #!/bin/bash
-    yum install -y httpd
-    TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" \
-      -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
-    IP=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" \
-      http://169.254.169.254/latest/meta-data/local-ipv4)
-    echo "<h1>Welcome to $IP</h1>" > /var/www/html/index.html
-    systemctl enable httpd
-    systemctl start httpd
-  EOF
-}
-
 resource "aws_launch_template" "main" {
   # name_prefix lets AWS append a unique suffix on every recreate — without it,
   # Terraform cannot create the replacement before deleting the original because
@@ -42,9 +21,9 @@ resource "aws_launch_template" "main" {
     security_groups             = [aws_security_group.instance.id]
   }
 
-  # user_data must be base64-encoded per the EC2 API contract;
-  # Terraform's base64encode() handles this so the script can be kept readable
-  user_data = base64encode(local.user_data)
+  # filebase64 reads and encodes the script in one step — keeps the HTML/bash
+  # out of the Terraform files without needing a templatefile() wrapper
+  user_data = filebase64("${path.module}/scripts/userdata.sh")
 
   tag_specifications {
     resource_type = "instance"
