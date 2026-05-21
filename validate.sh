@@ -67,7 +67,7 @@ echo "NOTE: Sampling ALB responses..."
 echo ""
 
 for i in $(seq 1 6); do
-  RESPONSE=$(curl -sf "http://${ALB_DNS}")
+  RESPONSE=$(curl -sf "http://${ALB_DNS}/plain")
   echo "  [${i}] ${RESPONSE}"
 done
 

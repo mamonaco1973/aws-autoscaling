@@ -41,7 +41,7 @@ cat > /var/www/html/index.html <<HTMLEOF
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      background: #232F3E;
+      background: #FFFFFF;
       font-family: -apple-system, 'Segoe UI', Arial, sans-serif;
       min-height: 100vh;
       display: flex;
@@ -143,6 +143,10 @@ cat > /var/www/html/index.html <<HTMLEOF
 </body>
 </html>
 HTMLEOF
+
+# Plain-text endpoint for scripted health checks — avoids piping HTML through
+# validate.sh and polluting terminal output
+echo "$IP" > /var/www/html/plain
 
 # ------------------------------------------------------------------------------
 # Start Apache
