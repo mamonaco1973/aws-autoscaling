@@ -8,6 +8,8 @@ Instances run on ARM-based t4g.micro (Graviton2) in private subnets and are neve
 
 This solution is ideal for understanding the fundamentals of AWS Auto Scaling without the complexity of application-specific configuration. It uses no Packer, no custom AMI, and deploys in a single Terraform phase.
 
+![ASG](asg.png)
+
 ## Prerequisites
 
 * [An AWS Account](https://aws.amazon.com/console/)
