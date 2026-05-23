@@ -2,6 +2,8 @@
 
 This project demonstrates a minimal AWS Auto Scaling Group deployment using Terraform. It provisions a fleet of Apache web servers behind an Application Load Balancer, with each instance displaying its own metadata — private IP, instance ID, availability zone, and instance type — on a styled page.
 
+![AWS diagram](aws-autoscaling.png)
+
 Instances run on ARM-based t4g.micro (Graviton2) in private subnets and are never directly reachable from the internet. All inbound traffic flows through the ALB. A NAT Gateway provides outbound internet access for package installation. CPU-based CloudWatch alarms drive automatic scale-out and scale-in between 1 and 6 instances.
 
 This solution is ideal for understanding the fundamentals of AWS Auto Scaling without the complexity of application-specific configuration. It uses no Packer, no custom AMI, and deploys in a single Terraform phase.
