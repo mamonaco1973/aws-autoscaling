@@ -9,26 +9,13 @@
 exec > /root/userdata.log 2>&1
 
 # ------------------------------------------------------------------------------
-# Wait for apt to be available
-# Ubuntu cloud images run unattended-upgrades on first boot, which holds the
-# dpkg/apt lock. Racing it produces an intermittent "Could not get lock" failure
-# that leaves the instance with no web server, so wait for cloud-init to settle
-# before touching apt. noninteractive suppresses prompts that would otherwise
-# block a script with no TTY.
+# Install Apache
+# No network wait loop and no lock handling — unlike OCI, AWS has NAT routing
+# up before instances launch and apt is free at this point in boot.
+# noninteractive suppresses prompts that would block a script with no TTY.
 # ------------------------------------------------------------------------------
 
 export DEBIAN_FRONTEND=noninteractive
-
-echo "NOTE: Waiting for cloud-init to finish..."
-cloud-init status --wait
-echo "NOTE: cloud-init done."
-
-# ------------------------------------------------------------------------------
-# Install Apache
-# No network wait loop needed — unlike OCI, AWS has the NAT gateway routing
-# before instances launch, so the archive is reachable the moment cloud-init
-# hands over.
-# ------------------------------------------------------------------------------
 
 echo "NOTE: Installing apache2..."
 apt-get update -y

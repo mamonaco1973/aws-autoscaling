@@ -31,9 +31,9 @@ resource "aws_autoscaling_group" "main" {
 
   # Give instances time to finish user_data and start apache2 before the ASG
   # begins health checking. Without enough slack, instances are terminated and
-  # relaunched in a loop during initial deployment. 180s (not 60s) because the
-  # Ubuntu path waits on cloud-init, then runs apt-get update + install, which
-  # is substantially slower than a yum install on a t4g.micro.
+  # relaunched in a loop during initial deployment. 180s (not 60s) leaves room
+  # for apt-get update + install on a t4g.micro, plus any wait for the
+  # unattended-upgrades dpkg lock to clear.
   health_check_grace_period = 180
 
   launch_template {
