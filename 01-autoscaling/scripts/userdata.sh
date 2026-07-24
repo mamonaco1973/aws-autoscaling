@@ -10,16 +10,22 @@ exec > /root/userdata.log 2>&1
 
 # ------------------------------------------------------------------------------
 # Install Apache
-# No network wait loop and no lock handling — unlike OCI, AWS has NAT routing
-# up before instances launch and apt is free at this point in boot.
+# No network wait loop — the ASG's depends_on guarantees NAT routing is live
+# before instances launch, so connectivity is a Terraform ordering concern,
+# not something to poll for here.
+#
+# ForceIPv4 because arm64 pulls from ports.ubuntu.com, whose AAAA records
+# resolve on instances that have no IPv6 — apt otherwise burns six failed
+# "Network is unreachable" attempts per repo before falling back to IPv4.
+#
 # noninteractive suppresses prompts that would block a script with no TTY.
 # ------------------------------------------------------------------------------
 
 export DEBIAN_FRONTEND=noninteractive
 
 echo "NOTE: Installing apache2..."
-apt-get update -y
-apt-get install -y apache2
+apt-get -o Acquire::ForceIPv4=true update -y
+apt-get -o Acquire::ForceIPv4=true install -y apache2
 
 # ------------------------------------------------------------------------------
 # Fetch Instance Metadata

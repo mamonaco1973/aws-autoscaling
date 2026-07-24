@@ -51,6 +51,17 @@ resource "aws_autoscaling_group" "main" {
     value               = "${local.name}-instance"
     propagate_at_launch = true
   }
+
+  # The ASG only references the private subnets, which exist well before they
+  # have a usable default route. Without these explicit dependencies Terraform
+  # is free to launch instances first, and user_data runs with no path out —
+  # apt-get update fails and the install silently falls back to the stale
+  # package indexes baked into the AMI.
+  depends_on = [
+    aws_nat_gateway.main,
+    aws_route_table_association.private_a,
+    aws_route_table_association.private_b,
+  ]
 }
 
 # ================================================================================
