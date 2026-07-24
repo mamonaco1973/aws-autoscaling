@@ -20,21 +20,25 @@ provider "aws" {
 
 # ================================================================================
 # AMI Lookup
-# Queries AWS for the latest Amazon Linux 2023 AMI at plan time, eliminating
-# the need to hard-code an AMI ID or maintain a Packer pipeline. The filters
-# narrow results to x86_64 HVM EBS-backed images published by Amazon, ensuring
-# only official, production-grade images are selected.
+# Queries AWS for the latest Ubuntu 24.04 LTS AMI at plan time, eliminating
+# the need to hard-code an AMI ID or maintain a Packer pipeline. Ubuntu is used
+# here rather than Amazon Linux so this deployment matches the Azure, GCP, and
+# OCI equivalents — a common OS keeps cross-cloud comparisons honest.
 # ================================================================================
 
-data "aws_ami" "al2023" {
+data "aws_ami" "ubuntu" {
   most_recent = true
-  owners      = ["amazon"]
 
-  # al2023-ami-2023* matches official AL2023 releases; excludes minimal/ECS
-  # variants that ship without the package manager configured for httpd
+  # Canonical's official publisher account — filtering by owner prevents a
+  # look-alike community AMI from ever matching the name pattern below
+  owners = ["099720109477"]
+
+  # "noble" is the 24.04 LTS codename. The hvm-ssd* wildcard is deliberate:
+  # Canonical publishes newer 24.04 builds under hvm-ssd-gp3, so a hardcoded
+  # hvm-ssd path silently stops matching current images.
   filter {
     name   = "name"
-    values = ["al2023-ami-2023*arm64"]
+    values = ["ubuntu/images/hvm-ssd*/ubuntu-noble-24.04-arm64-server-*"]
   }
 
   # HVM (hardware virtual machine) is required for current-gen instance types;

@@ -61,7 +61,7 @@ When the deployment completes, the following resources are created:
   - HTTP listener forwarding to the target group
 
 - **Auto Scaling:**
-  - Launch Template: Amazon Linux 2023 ARM64, t4g.micro, Apache with IMDSv2 metadata page
+  - Launch Template: Ubuntu 24.04 LTS ARM64, t4g.micro, Apache with IMDSv2 metadata page
   - Auto Scaling Group: min 1, desired 4, max 6 — spread across private subnets
   - Scale-up policy: +1 instance, 120-second cooldown
   - Scale-down policy: -1 instance, 120-second cooldown

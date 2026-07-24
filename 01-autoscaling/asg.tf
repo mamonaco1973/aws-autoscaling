@@ -29,10 +29,12 @@ resource "aws_autoscaling_group" "main" {
   # returning HTTP errors will be replaced, not just an instance that crashed.
   health_check_type = "ELB"
 
-  # Give instances 60 seconds to finish the user_data script and start httpd
-  # before the ASG begins health checking. Without this, instances are often
-  # terminated and relaunched in a loop during initial deployment.
-  health_check_grace_period = 60
+  # Give instances time to finish user_data and start apache2 before the ASG
+  # begins health checking. Without enough slack, instances are terminated and
+  # relaunched in a loop during initial deployment. 180s (not 60s) because the
+  # Ubuntu path waits on cloud-init, then runs apt-get update + install, which
+  # is substantially slower than a yum install on a t4g.micro.
+  health_check_grace_period = 180
 
   launch_template {
     id = aws_launch_template.main.id

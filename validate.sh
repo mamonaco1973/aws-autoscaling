@@ -22,7 +22,7 @@ echo "NOTE: ALB endpoint: http://${ALB_DNS}"
 
 # ------------------------------------------------------------------------------
 # Step 2: Wait for healthy targets in asg-tg
-# Polls every 10s — instances need time for httpd to start and pass checks
+# Polls every 10s — instances need time for apache2 to start and pass checks
 # ------------------------------------------------------------------------------
 
 TG_ARN=$(aws elbv2 describe-target-groups \

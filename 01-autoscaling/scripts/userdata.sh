@@ -5,11 +5,26 @@
 # metadata via IMDSv2, and writes an AWS-themed HTML page to the web root.
 # ================================================================================
 
-yum install -y httpd
+# ------------------------------------------------------------------------------
+# Install Apache
+# Ubuntu cloud images run unattended-upgrades on first boot, which holds the
+# dpkg/apt lock. Racing it produces an intermittent "Could not get lock" failure
+# that leaves the instance with no web server, so wait for cloud-init to settle
+# before touching apt. noninteractive suppresses prompts that would otherwise
+# block a script with no TTY.
+# ------------------------------------------------------------------------------
+
+export DEBIAN_FRONTEND=noninteractive
+
+cloud-init status --wait
+
+apt-get update -y
+apt-get install -y apache2
 
 # ------------------------------------------------------------------------------
 # Fetch Instance Metadata
-# IMDSv2 requires a session token — IMDSv1 is disabled on AL2023 by default
+# IMDSv2 requires a session token. Ubuntu AMIs still allow IMDSv1, but the
+# token flow works on both and matches AWS's recommended default.
 # ------------------------------------------------------------------------------
 
 TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" \
@@ -150,8 +165,10 @@ echo "$IP" > /var/www/html/plain
 
 # ------------------------------------------------------------------------------
 # Start Apache
-# enable persists the service across reboots; start brings it up immediately
+# enable persists the service across reboots. The apt package already starts
+# apache2, so restart (not start) is used to guarantee the freshly written
+# index.html is being served rather than silently no-oping.
 # ------------------------------------------------------------------------------
 
-systemctl enable httpd
-systemctl start httpd
+systemctl enable apache2
+systemctl restart apache2

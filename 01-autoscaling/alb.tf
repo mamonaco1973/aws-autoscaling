@@ -30,14 +30,14 @@ resource "aws_lb_target_group" "main" {
   vpc_id   = aws_vpc.main.id
 
   health_check {
-    # Apache serves the welcome page at / — a 200 response means httpd is up
+    # Apache serves the page at / — a 200 response means apache2 is up
     path = "/"
 
     # Check every 10 seconds — fast enough to detect failures within a minute
     interval = 10
 
     # Require 3 consecutive successes before marking healthy, preventing a
-    # slow-starting instance from receiving traffic before httpd is ready
+    # slow-starting instance from receiving traffic before apache2 is ready
     healthy_threshold = 3
 
     # Only 2 consecutive failures needed to pull an instance from rotation —

@@ -21,6 +21,7 @@ Single Terraform phase in `01-autoscaling/`. No modules, no workspaces.
 
 - **Region:** us-east-2
 - **Instance:** t4g.micro (Graviton2 ARM) — cheapest burstable in AWS
+- **OS:** Ubuntu 24.04 LTS (arm64) — matches the Azure/GCP/OCI builds
 - **LB:** Application Load Balancer (L7) — per-request routing, even distribution
 - **ASG:** min 1, desired 4, max 6 across two private subnets (us-east-2a/2b)
 - **Scaling:** CloudWatch CPU alarms → scale-up/scale-down policies
@@ -51,4 +52,4 @@ across responses confirm per-request L7 load balancing is working.
 | `01-autoscaling/asg.tf` | ASG, scaling policies, CloudWatch alarms |
 | `01-autoscaling/alb.tf` | ALB, target group, listener, health check |
 | `01-autoscaling/networking.tf` | VPC, public/private subnets, IGW, NAT Gateway |
-| `01-autoscaling/scripts/userdata.sh` | Cloud-init: installs Apache, fetches IMDS v2, writes HTML + /plain |
+| `01-autoscaling/scripts/userdata.sh` | Cloud-init: installs apache2, fetches IMDS v2, writes HTML + /plain |

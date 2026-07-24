@@ -48,7 +48,7 @@ resource "aws_security_group" "instance" {
     security_groups = [aws_security_group.alb.id]
   }
 
-  # Unrestricted egress allows instances to reach yum repos and AWS APIs
+  # Unrestricted egress allows instances to reach apt repos and AWS APIs
   # through the NAT gateway — no specific destination needs to be whitelisted
   egress {
     from_port   = 0

@@ -11,7 +11,7 @@ resource "aws_launch_template" "main" {
   # Terraform cannot create the replacement before deleting the original because
   # the name would collide
   name_prefix   = "asg-lt-"
-  image_id      = data.aws_ami.al2023.id
+  image_id      = data.aws_ami.ubuntu.id
   instance_type = "t4g.micro"
 
   network_interfaces {
