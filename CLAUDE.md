@@ -26,6 +26,7 @@ Single Terraform phase in `01-autoscaling/`. No modules, no workspaces.
 - **ASG:** min 1, desired 4, max 6 across two private subnets (us-east-2a/2b)
 - **Scaling:** CloudWatch CPU alarms → scale-up/scale-down policies
 - **Startup:** `scripts/userdata.sh` — EC2 user data, fetches EC2 IMDS v2
+- **Boot log:** `/root/userdata.log` on each instance — full user-data trace
 - **Access:** SSM Session Manager only — no SSH key, no public IP, no port 22
 
 ## Instance Access

@@ -5,8 +5,11 @@
 # metadata via IMDSv2, and writes an AWS-themed HTML page to the web root.
 # ================================================================================
 
+# Redirect all stdout and stderr to the log file for post-boot debugging
+exec > /root/userdata.log 2>&1
+
 # ------------------------------------------------------------------------------
-# Install Apache
+# Wait for apt to be available
 # Ubuntu cloud images run unattended-upgrades on first boot, which holds the
 # dpkg/apt lock. Racing it produces an intermittent "Could not get lock" failure
 # that leaves the instance with no web server, so wait for cloud-init to settle
@@ -16,8 +19,18 @@
 
 export DEBIAN_FRONTEND=noninteractive
 
+echo "NOTE: Waiting for cloud-init to finish..."
 cloud-init status --wait
+echo "NOTE: cloud-init done."
 
+# ------------------------------------------------------------------------------
+# Install Apache
+# No network wait loop needed — unlike OCI, AWS has the NAT gateway routing
+# before instances launch, so the archive is reachable the moment cloud-init
+# hands over.
+# ------------------------------------------------------------------------------
+
+echo "NOTE: Installing apache2..."
 apt-get update -y
 apt-get install -y apache2
 
@@ -26,6 +39,8 @@ apt-get install -y apache2
 # IMDSv2 requires a session token. Ubuntu AMIs still allow IMDSv1, but the
 # token flow works on both and matches AWS's recommended default.
 # ------------------------------------------------------------------------------
+
+echo "NOTE: Fetching instance metadata..."
 
 TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" \
   -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
@@ -45,6 +60,8 @@ INSTANCE_TYPE=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" \
 # ------------------------------------------------------------------------------
 # Write HTML Page
 # ------------------------------------------------------------------------------
+
+echo "NOTE: Writing index.html..."
 
 cat > /var/www/html/index.html <<HTMLEOF
 <!DOCTYPE html>
@@ -168,7 +185,13 @@ echo "$IP" > /var/www/html/plain
 # enable persists the service across reboots. The apt package already starts
 # apache2, so restart (not start) is used to guarantee the freshly written
 # index.html is being served rather than silently no-oping.
+#
+# Unlike Oracle Linux, Ubuntu cloud images ship with no host firewall enabled,
+# so the security group alone is sufficient — no firewall-cmd equivalent here.
 # ------------------------------------------------------------------------------
 
+echo "NOTE: Enabling and starting apache2..."
 systemctl enable apache2
 systemctl restart apache2
+
+echo "NOTE: Done."
