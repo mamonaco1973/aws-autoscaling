@@ -19,7 +19,7 @@ resource "aws_vpc" "main" {
   enable_dns_support   = true
   enable_dns_hostnames = true
 
-  tags = { Name = "asg-vpc" }
+  tags = { Name = "${local.name}-vpc" }
 }
 
 # The IGW is the VPC's on-ramp to the internet — without it, public subnets
@@ -27,7 +27,7 @@ resource "aws_vpc" "main" {
 resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
 
-  tags = { Name = "asg-igw" }
+  tags = { Name = "${local.name}-igw" }
 }
 
 # ================================================================================
@@ -46,7 +46,7 @@ resource "aws_subnet" "public_a" {
   # and the ALB receives a routable address in this AZ
   map_public_ip_on_launch = true
 
-  tags = { Name = "asg-public-us-east-2a" }
+  tags = { Name = "${local.name}-public-us-east-2a" }
 }
 
 resource "aws_subnet" "public_b" {
@@ -55,7 +55,7 @@ resource "aws_subnet" "public_b" {
   availability_zone       = "us-east-2b"
   map_public_ip_on_launch = true
 
-  tags = { Name = "asg-public-us-east-2b" }
+  tags = { Name = "${local.name}-public-us-east-2b" }
 }
 
 # All internet-bound traffic from public subnets exits through the IGW
@@ -67,7 +67,7 @@ resource "aws_route_table" "public" {
     gateway_id = aws_internet_gateway.main.id
   }
 
-  tags = { Name = "asg-public-rt" }
+  tags = { Name = "${local.name}-public-rt" }
 }
 
 resource "aws_route_table_association" "public_a" {
@@ -96,14 +96,14 @@ resource "aws_route_table_association" "public_b" {
 resource "aws_eip" "nat" {
   domain = "vpc"
 
-  tags = { Name = "asg-nat-eip" }
+  tags = { Name = "${local.name}-nat-eip" }
 }
 
 resource "aws_nat_gateway" "main" {
   allocation_id = aws_eip.nat.id
   subnet_id     = aws_subnet.public_a.id
 
-  tags = { Name = "asg-nat" }
+  tags = { Name = "${local.name}-nat" }
 
   # The IGW must exist before the NAT gateway can forward traffic to the
   # internet — explicit dependency prevents a race condition during apply
@@ -126,7 +126,7 @@ resource "aws_subnet" "private_a" {
   # IPs, even if someone launches one manually outside of Terraform
   map_public_ip_on_launch = false
 
-  tags = { Name = "asg-private-us-east-2a" }
+  tags = { Name = "${local.name}-private-us-east-2a" }
 }
 
 resource "aws_subnet" "private_b" {
@@ -135,7 +135,7 @@ resource "aws_subnet" "private_b" {
   availability_zone       = "us-east-2b"
   map_public_ip_on_launch = false
 
-  tags = { Name = "asg-private-us-east-2b" }
+  tags = { Name = "${local.name}-private-us-east-2b" }
 }
 
 # All internet-bound traffic from private subnets exits through the NAT gateway
@@ -148,7 +148,7 @@ resource "aws_route_table" "private" {
     nat_gateway_id = aws_nat_gateway.main.id
   }
 
-  tags = { Name = "asg-private-rt" }
+  tags = { Name = "${local.name}-private-rt" }
 }
 
 resource "aws_route_table_association" "private_a" {

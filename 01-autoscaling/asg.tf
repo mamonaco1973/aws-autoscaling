@@ -7,7 +7,7 @@
 # ================================================================================
 
 resource "aws_autoscaling_group" "main" {
-  name = "asg-main"
+  name = "${local.name}-main"
 
   # Floor of 1 keeps the group alive at minimum cost during quiet periods;
   # ceiling of 6 caps cost during a runaway load event
@@ -44,9 +44,11 @@ resource "aws_autoscaling_group" "main" {
     version = "$Latest"
   }
 
+  # Suffixed so instances from concurrent deployments are distinguishable in
+  # the EC2 console rather than appearing as one undifferentiated fleet
   tag {
     key                 = "Name"
-    value               = "asg-instance"
+    value               = "${local.name}-instance"
     propagate_at_launch = true
   }
 }
@@ -60,7 +62,7 @@ resource "aws_autoscaling_group" "main" {
 # ================================================================================
 
 resource "aws_autoscaling_policy" "scale_up" {
-  name                   = "asg-scale-up"
+  name                   = "${local.name}-scale-up"
   autoscaling_group_name = aws_autoscaling_group.main.name
   adjustment_type        = "ChangeInCapacity"
   scaling_adjustment     = 1
@@ -68,7 +70,7 @@ resource "aws_autoscaling_policy" "scale_up" {
 }
 
 resource "aws_autoscaling_policy" "scale_down" {
-  name                   = "asg-scale-down"
+  name                   = "${local.name}-scale-down"
   autoscaling_group_name = aws_autoscaling_group.main.name
   adjustment_type        = "ChangeInCapacity"
   scaling_adjustment     = -1
@@ -85,7 +87,7 @@ resource "aws_autoscaling_policy" "scale_down" {
 
 # Triggers scale_up after CPU exceeds 60% for 2 consecutive 1-minute periods
 resource "aws_cloudwatch_metric_alarm" "cpu_high" {
-  alarm_name          = "asg-cpu-high"
+  alarm_name          = "${local.name}-cpu-high"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
   metric_name         = "CPUUtilization"
@@ -104,7 +106,7 @@ resource "aws_cloudwatch_metric_alarm" "cpu_high" {
 # Triggers scale_down after CPU stays below 60% for 60 consecutive 1-minute
 # periods — long window prevents scale-in during demos or brief quiet periods
 resource "aws_cloudwatch_metric_alarm" "cpu_low" {
-  alarm_name          = "asg-cpu-low"
+  alarm_name          = "${local.name}-cpu-low"
   comparison_operator = "LessThanThreshold"
   evaluation_periods  = 60
   metric_name         = "CPUUtilization"

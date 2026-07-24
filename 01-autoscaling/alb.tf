@@ -9,7 +9,7 @@
 # internal = false gives the ALB a public DNS name and places it in the public
 # subnets so it is reachable from the internet
 resource "aws_lb" "main" {
-  name               = "asg-alb"
+  name               = "${local.name}-alb"
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb.id]
@@ -18,13 +18,13 @@ resource "aws_lb" "main" {
   # with only one subnet, as it needs redundancy across availability zones
   subnets = [aws_subnet.public_a.id, aws_subnet.public_b.id]
 
-  tags = { Name = "asg-alb" }
+  tags = { Name = "${local.name}-alb" }
 }
 
 # The target group is the pool of instances the ALB routes traffic to.
 # The ASG registers and deregisters instances here as it scales in and out.
 resource "aws_lb_target_group" "main" {
-  name     = "asg-tg"
+  name     = "${local.name}-tg"
   port     = 80
   protocol = "HTTP"
   vpc_id   = aws_vpc.main.id
@@ -45,7 +45,7 @@ resource "aws_lb_target_group" "main" {
     unhealthy_threshold = 2
   }
 
-  tags = { Name = "asg-tg" }
+  tags = { Name = "${local.name}-tg" }
 }
 
 # The listener watches port 80 and forwards all requests to the target group.

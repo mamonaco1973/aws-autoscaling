@@ -10,9 +10,15 @@ resource "aws_launch_template" "main" {
   # name_prefix lets AWS append a unique suffix on every recreate — without it,
   # Terraform cannot create the replacement before deleting the original because
   # the name would collide
-  name_prefix   = "asg-lt-"
+  name_prefix   = "${local.name}-lt-"
   image_id      = data.aws_ami.ubuntu.id
   instance_type = "t4g.micro"
+
+  # Attaches the SSM role so instances register as managed nodes on boot. This
+  # is the only inbound path to these instances — see iam.tf.
+  iam_instance_profile {
+    name = aws_iam_instance_profile.ssm.name
+  }
 
   network_interfaces {
     # Instances live in private subnets and must not receive public IPs —
@@ -27,6 +33,6 @@ resource "aws_launch_template" "main" {
 
   tag_specifications {
     resource_type = "instance"
-    tags          = { Name = "asg-instance" }
+    tags          = { Name = "${local.name}-instance" }
   }
 }

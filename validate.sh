@@ -21,17 +21,16 @@ fi
 echo "NOTE: ALB endpoint: http://${ALB_DNS}"
 
 # ------------------------------------------------------------------------------
-# Step 2: Wait for healthy targets in asg-tg
-# Polls every 10s — instances need time for apache2 to start and pass checks
+# Step 2: Wait for healthy targets
+# Polls every 10s — instances need time for apache2 to start and pass checks.
+# The ARN comes from Terraform rather than a name lookup: resource names carry
+# a per-deployment suffix, so a hardcoded name would find the wrong deployment
+# (or none) once this project is deployed more than once.
 # ------------------------------------------------------------------------------
 
-TG_ARN=$(aws elbv2 describe-target-groups \
-  --region "${REGION}" \
-  --names asg-tg \
-  --query 'TargetGroups[0].TargetGroupArn' \
-  --output text)
+TG_ARN=$(terraform -chdir=01-autoscaling output -raw target_group_arn)
 
-echo "NOTE: Waiting for healthy targets in asg-tg..."
+echo "NOTE: Waiting for healthy targets in ${TG_ARN##*/}..."
 
 TIMEOUT=300
 ELAPSED=0
@@ -75,5 +74,6 @@ echo ""
 echo "================================================================================="
 echo "  Auto Scaling Group — Deployment validated!"
 echo "================================================================================="
-echo "  ALB : http://${ALB_DNS}"
+echo "  Deployment : $(terraform -chdir=01-autoscaling output -raw deployment_name)"
+echo "  ALB        : http://${ALB_DNS}"
 echo "================================================================================="

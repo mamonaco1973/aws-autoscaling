@@ -9,7 +9,7 @@
 # The ALB is the sole public entry point. Port 80 is open to the world so that
 # any browser can reach the application without needing to know instance IPs.
 resource "aws_security_group" "alb" {
-  name        = "asg-alb-sg"
+  name        = "${local.name}-alb-sg"
   description = "Allow HTTP inbound to ALB"
   vpc_id      = aws_vpc.main.id
 
@@ -29,7 +29,7 @@ resource "aws_security_group" "alb" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = { Name = "asg-alb-sg" }
+  tags = { Name = "${local.name}-alb-sg" }
 }
 
 # Using a security group reference instead of a CIDR means only traffic that
@@ -37,7 +37,7 @@ resource "aws_security_group" "alb" {
 # Adding your laptop's IP to the ALB CIDR would not grant direct instance
 # access — the instance SG would still block it.
 resource "aws_security_group" "instance" {
-  name        = "asg-instance-sg"
+  name        = "${local.name}-instance-sg"
   description = "Allow HTTP from ALB only"
   vpc_id      = aws_vpc.main.id
 
@@ -57,5 +57,5 @@ resource "aws_security_group" "instance" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = { Name = "asg-instance-sg" }
+  tags = { Name = "${local.name}-instance-sg" }
 }
