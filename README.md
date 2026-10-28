@@ -1,88 +1,69 @@
-# AWS Auto Scaling
+# AWS Auto Scaling: an Apache Fleet Behind an Application Load Balancer
 
-This project demonstrates a minimal AWS Auto Scaling Group deployment using Terraform. It provisions a fleet of Apache web servers behind an Application Load Balancer, with each instance displaying its own metadata — private IP, instance ID, availability zone, and instance type — on a styled page.
+A minimal **Auto Scaling group** of Apache web servers behind an
+**Application Load Balancer**, built with Terraform in one phase. Each
+instance serves a page showing its own private IP, instance ID,
+availability zone and instance type, so you can watch the load balancer move
+between them. CPU alarms scale the group between 1 and 6 instances. There's
+no Packer image and no application code.
 
-![AWS diagram](aws-autoscaling.png)
+![The instance metadata page](asg.png)
 
-Instances run on ARM-based t4g.micro (Graviton2) in private subnets and are never directly reachable from the internet. All inbound traffic flows through the ALB. A NAT Gateway provides outbound internet access for package installation. CPU-based CloudWatch alarms drive automatic scale-out and scale-in between 1 and 6 instances.
+| Piece | Where | Role |
+|---|---|---|
+| **asg-&lt;suffix&gt;-vpc** | `10.0.0.0/24`, us-east-2 | public subnets `10.0.0.0/26` (2a) and `10.0.0.64/26` (2b), private subnets `10.0.0.128/26` (2a) and `10.0.0.192/26` (2b); internet gateway and a NAT gateway |
+| **asg-&lt;suffix&gt;-alb** | public subnets | internet-facing ALB, HTTP 80; target group `asg-<suffix>-tg` with health checks on `/` |
+| **asg-&lt;suffix&gt;-main** | private subnets | Auto Scaling group, min 1, desired 4, max 6, 180 s health check grace period |
+| **Launch template** | | Ubuntu 24.04 ARM64, `t4g.micro` (Graviton2); user data installs Apache and writes the metadata page (via IMDSv2) and a plain-text `/plain` page with the IP |
+| **Alarms + policies** | CloudWatch | `cpu-high` adds an instance, `cpu-low` removes one; both with a 120 s cooldown |
+| **asg-&lt;suffix&gt;-ssm-role** | IAM | instance profile with `AmazonSSMManagedInstanceCore`, for Session Manager access |
 
-This solution is ideal for understanding the fundamentals of AWS Auto Scaling without the complexity of application-specific configuration. It uses no Packer, no custom AMI, and deploys in a single Terraform phase.
+The instances have no public IPs. The ALB accepts port 80 from the internet;
+the instances accept port 80 only from the ALB's security group.
 
-![ASG](asg.png)
+## Architecture
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="architecture-dark.svg">
+  <img alt="Requests from the internet reach the asg Application Load Balancer in two public subnets in us-east-2 on HTTP port 80, which forwards through its target group to the instances of the Auto Scaling group, one to six (desired four) t4g.micro Ubuntu 24.04 ARM64 instances in private subnets, launched from a launch template that installs Apache and serves a page of instance metadata. A CloudWatch alarm adds an instance when average CPU is above 60% for two minutes and another removes one when it stays below 60% for an hour. The instances reach the internet through a NAT gateway and carry an instance profile for SSM." src="architecture-light.svg">
+</picture>
+
+Regenerate with `python3 make_diagram.py`.
+
+**`01-autoscaling/`** is the whole stack: `networking.tf`, `security.tf`,
+`alb.tf`, `lt.tf` (with `scripts/userdata.sh`), `asg.tf` (the group, the two
+policies and the two alarms), `iam.tf`, and `outputs.tf`.
+
+## Scaling policies
+
+| Alarm | Condition | Periods | Action |
+|---|---|---|---|
+| `cpu-high` | average CPU above 60% | 2 × 1 minute | +1 instance |
+| `cpu-low` | average CPU below 60% | 60 × 1 minute | -1 instance |
+
+The hour-long scale-in window keeps instances from disappearing during a demo
+or a short quiet spell.
 
 ## Prerequisites
 
 * [An AWS Account](https://aws.amazon.com/console/)
 * [Install AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
-* [Install Latest Terraform](https://developer.hashicorp.com/terraform/install)
+* [Install Terraform](https://developer.hashicorp.com/terraform/install)
 
-If this is your first time watching our content, we recommend starting with this video: [AWS + Terraform: Easy Setup](https://youtu.be/BCMQo0CB9wk). It provides a step-by-step guide to properly configure Terraform and the AWS CLI.
+If this is your first time watching our content, we recommend starting with
+this video: [AWS + Terraform: Easy Setup](https://youtu.be/BCMQo0CB9wk).
 
----
-
-## Download this Repository
+## Deploy
 
 ```bash
 git clone https://github.com/mamonaco1973/aws-autoscaling.git
 cd aws-autoscaling
-```
-
----
-
-## Build the Code
-
-Run [check_env](check_env.sh) to validate your environment, then run [apply](apply.sh) to provision the infrastructure.
-
-```bash
 ./apply.sh
 ```
 
-[apply.sh](apply.sh) runs `terraform init` and `terraform apply`, then automatically calls [validate.sh](validate.sh) to confirm the deployment is healthy.
-
----
-
-### Build Results
-
-When the deployment completes, the following resources are created:
-
-- **Networking:**
-  - A VPC (10.0.0.0/24) with public and private subnets across us-east-2a and us-east-2b
-  - Internet Gateway for ALB inbound traffic
-  - NAT Gateway in the public subnet for instance outbound access
-  - Route tables configured for both public and private subnets
-
-- **Security:**
-  - ALB security group: accepts port 80 from the internet
-  - Instance security group: accepts port 80 only from the ALB security group
-
-- **Load Balancer:**
-  - Internet-facing Application Load Balancer in the public subnets
-  - Target group with HTTP health checks on `/`
-  - HTTP listener forwarding to the target group
-
-- **Auto Scaling:**
-  - Launch Template: Ubuntu 24.04 LTS ARM64, t4g.micro, Apache with IMDSv2 metadata page
-  - Auto Scaling Group: min 1, desired 4, max 6 — spread across private subnets
-  - Scale-up policy: +1 instance, 120-second cooldown
-  - Scale-down policy: -1 instance, 120-second cooldown
-  - CloudWatch alarms driving both policies based on average CPU utilization
-
----
-
-### Scaling Policies
-
-| Alarm    | Condition  | Periods    | Action      |
-|----------|------------|------------|-------------|
-| cpu-high | CPU > 60%  | 2 × 1 min   | +1 instance |
-| cpu-low  | CPU < 60%  | 60 × 1 min  | -1 instance |
-
-The long scale-in window (1 hour) prevents instances from being removed during demos or brief quiet periods.
-
----
-
-### Validate the Deployment
-
-[validate.sh](validate.sh) is called automatically by [apply.sh](apply.sh). It waits for at least one healthy target in the ALB target group, then samples 6 responses to confirm load balancing is working. Different IP addresses across requests confirm that traffic is being distributed across instances.
+`apply.sh` applies `01-autoscaling` and runs `validate.sh`, which waits for
+healthy targets and the first HTTP 200, then samples six responses from
+`/plain`; different IPs show the load balancer spreading requests:
 
 ```
 NOTE: ALB endpoint: http://asg-alb-xxxxxxxxxx.us-east-2.elb.amazonaws.com
@@ -104,14 +85,19 @@ NOTE: Sampling ALB responses...
 =================================================================================
 ```
 
----
+## Try it
 
-### Clean Up Infrastructure
+1. Open the **ALB** URL and refresh; the instance details change as
+   requests land on different instances.
+2. Generate CPU load on the instances (for example with Session Manager and
+   `stress`) and watch `cpu-high` add instances, up to 6.
 
-When you are finished testing, you can remove all provisioned resources with:
+## Teardown
 
 ```bash
 ./destroy.sh
 ```
 
-This will use Terraform to delete the VPC, subnets, NAT Gateway, ALB, Auto Scaling Group, Launch Template, security groups, CloudWatch alarms, and all other infrastructure created by the project.
+## Notes
+
+- **Lab only.** The ALB serves plain HTTP.
